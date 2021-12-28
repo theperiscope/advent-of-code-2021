@@ -13,10 +13,18 @@ import (
 
 type grid [][]int
 
-func (g *grid) Print() {
+func (g *grid) Print(bestPath []position) {
 	for i := 0; i < len(*g); i++ {
 		for j := 0; j < len((*g)[i]); j++ {
-			if (*g)[i][j] == 0 {
+			isOnBestPath := false
+			for _, bestPathLocation := range bestPath {
+				p := position{x: j, y: i}
+				if bestPathLocation == p {
+					isOnBestPath = true
+					break
+				}
+			}
+			if isOnBestPath {
 				fmt.Printf("\x1b[104m%d\x1b[0m", (*g)[i][j])
 			} else {
 				fmt.Printf("\x1b[90m%d\x1b[0m", (*g)[i][j])
@@ -44,54 +52,65 @@ func (g *grid) distances(x, y int) (m []path) {
 	return m
 }
 
-func (g *grid) solve(start position, end position) int {
-	paths := pathPriorityQueue{}
-	bestCost := math.MaxInt
+func (g *grid) solve(start position, end position) (bestPathCost int, bestPath []position) {
 	visited := map[position]bool{}
-	heap.Init(&paths)
-	var p *path = &path{location: start, cost: 0}
-	for p != nil {
-		nextMoves := g.distances(p.location.x, p.location.y)
-		for _, move := range nextMoves {
-			next := path{move.location, p.cost + move.cost}
-			if move.location == end {
-				if next.cost < bestCost {
-					bestCost = next.cost
-				}
-			} else {
-				heap.Push(&paths, &next)
-			}
-		}
-		visited[p.location] = true
-		p = nil
-		for len(paths) > 0 {
-			p = heap.Pop(&paths).(*path)
-			if visited[p.location] { // skip already visited locations
-				p = nil
-				continue
-			}
-			break
-		}
-		if p == nil {
-			break
+	prev := map[position]position{}
+	bestPathCost = math.MaxInt
+	paths := pathPriorityQueue{}
+	distancesFromStart := map[position]int{}
+	for i := 0; i < len(*g); i++ {
+		for j := 0; j < len((*g)[i]); j++ {
+			distancesFromStart[position{x: j, y: i}] = math.MaxInt64
 		}
 	}
-	return bestCost
+	distancesFromStart[start] = 0
+	heap.Init(&paths)
+	heap.Push(&paths, &path{location: start, cost: 0})
+	for paths.Len() > 0 {
+		current := heap.Pop(&paths).(*path)
+		if visited[current.location] {
+			continue
+		}
+		visited[current.location] = true
+		nextMoves := g.distances(current.location.x, current.location.y)
+		for _, nextMove := range nextMoves {
+			if _, ok := visited[nextMove.location]; !ok || !visited[nextMove.location] {
+				if distancesFromStart[current.location]+nextMove.cost < distancesFromStart[nextMove.location] {
+					next := path{nextMove.location, current.cost + nextMove.cost}
+					distancesFromStart[nextMove.location] = distancesFromStart[current.location] + nextMove.cost
+					prev[nextMove.location] = current.location
+					heap.Push(&paths, &next)
+					if nextMove.location == end && next.cost < bestPathCost {
+						bestPathCost = next.cost
+					}
+				}
+			}
+		}
+	}
+	bestPath = []position{end}
+	for p1 := prev[end]; p1 != start; {
+		bestPath = append(bestPath, p1)
+		p1 = prev[p1]
+	}
+	bestPath = append(bestPath, start)
+	return bestPathCost, bestPath
 }
 
 func part1(g *grid) {
 	startTime := time.Now()
-	bestCost := g.solve(position{0, 0}, position{x: len((*g)[0]) - 1, y: len(*g) - 1})
+	bestPathCost, bestPath := g.solve(position{0, 0}, position{x: len((*g)[0]) - 1, y: len(*g) - 1})
 	duration := time.Since(startTime)
-	fmt.Println("Part 1 Answer:", bestCost, "in", duration)
+	fmt.Println("Part 1 Answer:", bestPathCost, "in", duration)
+	g.Print(bestPath)
 }
 
 func part2(g *grid) {
 	newGrid := extendGrid(g)
 	startTime := time.Now()
-	bestCost := newGrid.solve(position{0, 0}, position{x: len((*newGrid)[0]) - 1, y: len(*newGrid) - 1})
+	bestPathCost, bestPath := newGrid.solve(position{0, 0}, position{x: len((*newGrid)[0]) - 1, y: len(*newGrid) - 1})
 	duration := time.Since(startTime)
-	fmt.Println("Part 2 Answer:", bestCost, "in", duration)
+	fmt.Println("Part 2 Answer:", bestPathCost, "in", duration)
+	newGrid.Print(bestPath)
 }
 
 func extendGrid(g *grid) *grid {
