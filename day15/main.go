@@ -2,22 +2,16 @@ package main
 
 import (
 	"AOC/pkg/utils"
+	"container/heap"
 	"fmt"
+	"math"
 	"os"
 	"strings"
+	"time"
 	"unsafe"
 )
 
 type grid [][]int
-
-type point struct {
-	X int
-	Y int
-}
-
-func (p point) String() string {
-	return fmt.Sprintf("(X=%d,Y=%d)", p.X, p.Y)
-}
 
 func (g *grid) Print() {
 	for i := 0; i < len(*g); i++ {
@@ -33,47 +27,71 @@ func (g *grid) Print() {
 	fmt.Println()
 }
 
-func (g *grid) Neighbors(i, j int) []point {
-	neighbors := []point{}
-	if i-1 >= 0 {
-		neighbors = append(neighbors, point{Y: i - 1, X: j})
+type position struct{ x, y int }
+type path struct {
+	location position
+	cost     int
+}
+
+func (g *grid) distances(x, y int) (m []path) {
+	m = []path{}
+	for _, n := range [][]int{{0, -1}, {0, 1}, {-1, 0}, {1, 0}} {
+		if x+n[1] < 0 || x+n[1] > len((*g)[0])-1 || y+n[0] < 0 || y+n[0] > len((*g))-1 { // valid range check
+			continue
+		}
+		m = append(m, path{location: position{x: x + n[1], y: y + n[0]}, cost: (*g)[y+n[0]][x+n[1]]})
 	}
-	if i+1 <= len(*g)-1 {
-		neighbors = append(neighbors, point{Y: i + 1, X: j})
+	return m
+}
+
+func (g *grid) solve(start position, end position) int {
+	paths := pathPriorityQueue{}
+	bestCost := math.MaxInt
+	visited := map[position]bool{}
+	heap.Init(&paths)
+	var p *path = &path{location: start, cost: 0}
+	for p != nil {
+		nextMoves := g.distances(p.location.x, p.location.y)
+		for _, move := range nextMoves {
+			next := path{move.location, p.cost + move.cost}
+			if move.location == end {
+				if next.cost < bestCost {
+					bestCost = next.cost
+				}
+			} else {
+				heap.Push(&paths, &next)
+			}
+		}
+		visited[p.location] = true
+		p = nil
+		for len(paths) > 0 {
+			p = heap.Pop(&paths).(*path)
+			if visited[p.location] { // skip already visited locations
+				p = nil
+				continue
+			}
+			break
+		}
+		if p == nil {
+			break
+		}
 	}
-	if j-1 >= 0 {
-		neighbors = append(neighbors, point{Y: i, X: j - 1})
-	}
-	if j+1 <= len((*g)[i])-1 {
-		neighbors = append(neighbors, point{Y: i, X: j + 1})
-	}
-	return neighbors
+	return bestCost
 }
 
 func part1(g *grid) {
-	graph := utils.Graph{}
-	graph.Directed = true
-
-	for i := 0; i < len(*g); i++ {
-		for j := 0; j < len((*g)[i]); j++ {
-			node := fmt.Sprintf("N%03X%03X", i, j)
-			neighbors := g.Neighbors(i, j)
-			for _, n := range neighbors {
-				neighborNode := fmt.Sprintf("N%03X%03X", n.Y, n.X)
-				graph.AddWeightedEdge(node, neighborNode, (*g)[n.Y][n.X])
-			}
-		}
-	}
-
-	start := "N000000"
-	end := fmt.Sprintf("N%03X%03X", len(*g)-1, len((*g)[len(*g)-1])-1)
-	distances := graph.Dijkstra(start)
-	fmt.Println(start, "->", end, ":", distances[end])
+	startTime := time.Now()
+	bestCost := g.solve(position{0, 0}, position{x: len((*g)[0]) - 1, y: len(*g) - 1})
+	duration := time.Since(startTime)
+	fmt.Println("Part 1 Answer:", bestCost, "in", duration)
 }
 
 func part2(g *grid) {
 	newGrid := extendGrid(g)
-	part1(newGrid)
+	startTime := time.Now()
+	bestCost := newGrid.solve(position{0, 0}, position{x: len((*newGrid)[0]) - 1, y: len(*newGrid) - 1})
+	duration := time.Since(startTime)
+	fmt.Println("Part 2 Answer:", bestCost, "in", duration)
 }
 
 func extendGrid(g *grid) *grid {
@@ -138,6 +156,33 @@ func main() {
 	}
 
 	// per https://stackoverflow.com/questions/29031353/conversion-of-a-slice-of-string-into-a-slice-of-custom-type
-	//part1((*grid)(unsafe.Pointer(&g1)))
+	part1((*grid)(unsafe.Pointer(&g1)))
 	part2((*grid)(unsafe.Pointer(&g2)))
+}
+
+// A pathPriorityQueue implements heap.Interface and holds Items.
+type pathPriorityQueue []*path
+
+func (pq pathPriorityQueue) Len() int { return len(pq) }
+
+func (pq pathPriorityQueue) Less(i, j int) bool {
+	return pq[i].cost < pq[j].cost
+}
+
+func (pq pathPriorityQueue) Swap(i, j int) {
+	pq[i], pq[j] = pq[j], pq[i]
+}
+
+func (pq *pathPriorityQueue) Push(x interface{}) {
+	item := x.(*path)
+	*pq = append(*pq, item)
+}
+
+func (pq *pathPriorityQueue) Pop() interface{} {
+	old := *pq
+	n := len(old)
+	item := old[n-1]
+	old[n-1] = nil // avoid memory leak
+	*pq = old[0 : n-1]
+	return item
 }
