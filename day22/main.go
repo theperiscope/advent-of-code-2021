@@ -8,7 +8,7 @@ import (
 
 // https://github.com/akosgarai/coldet/blob/master/coldet.go
 // https://developer.mozilla.org/en-US/docs/Games/Techniques/3D_collision_detection
-// Axis aligned bounding box
+// AABB represents axis-aligned bounding box
 type AABB struct {
 	origin point3D
 	width  int // X axis
@@ -21,7 +21,7 @@ type point3D struct {
 }
 
 type cuboid struct {
-	op   string
+	lit  bool
 	aabb AABB
 }
 
@@ -38,8 +38,7 @@ func main() {
 		var op string
 		var x1, x2, y1, y2, z1, z2 int
 		fmt.Sscanf(line, "%s x=%d..%d,y=%d..%d,z=%d..%d", &op, &x1, &x2, &y1, &y2, &z1, &z2)
-		//fmt.Printf("%s x=%d..%d,y=%d..%d,z=%d..%d\n", op, x1, x2, y1, y2, z1, z2)
-		c := cuboid{op, AABB{origin: point3D{x1, y1, z1}, width: x2 - x1 + 1, height: y2 - y1 + 1, length: z2 - z1 + 1}}
+		c := cuboid{op == "on", AABB{origin: point3D{x1, y1, z1}, width: x2 - x1 + 1, height: y2 - y1 + 1, length: z2 - z1 + 1}}
 		cuboids = append(cuboids, c)
 	}
 
@@ -54,23 +53,17 @@ func (c AABB) isFullyContainedIn(other AABB) bool {
 }
 
 func (c AABB) overlap(other AABB) *AABB {
-	c1 := c.origin
-	c2 := point3D{c1.X + c.width, c1.Y + c.height, c1.Z + c.length}
-	o1 := other.origin
-	o2 := point3D{o1.X + other.width, o1.Y + other.height, o1.Z + other.length}
+	cMin, cMax := c.origin, point3D{c.origin.X + c.width, c.origin.Y + c.height, c.origin.Z + c.length}
+	oMin, oMax := other.origin, point3D{other.origin.X + other.width, other.origin.Y + other.height, other.origin.Z + other.length}
 
-	intXFrom := utils.MaxInt(c1.X, o1.X)
-	intXTo := utils.MinInt(c2.X, o2.X)
-	intYFrom := utils.MaxInt(c1.Y, o1.Y)
-	intYTo := utils.MinInt(c2.Y, o2.Y)
-	intZFrom := utils.MaxInt(c1.Z, o1.Z)
-	intZTo := utils.MinInt(c2.Z, o2.Z)
+	overlapXFrom, overlapXTo := utils.MaxInt(cMin.X, oMin.X), utils.MinInt(cMax.X, oMax.X)
+	overlapYFrom, overlapYTo := utils.MaxInt(cMin.Y, oMin.Y), utils.MinInt(cMax.Y, oMax.Y)
+	overlapZFrom, overlapZTo := utils.MaxInt(cMin.Z, oMin.Z), utils.MinInt(cMax.Z, oMax.Z)
 
-	if intXFrom > intXTo || intYFrom > intYTo || intZFrom > intZTo {
+	if overlapXFrom > overlapXTo || overlapYFrom > overlapYTo || overlapZFrom > overlapZTo { // invalid overlap bounds
 		return nil
 	}
-
-	return &AABB{origin: point3D{X: intXFrom, Y: intYFrom, Z: intZFrom}, width: intXTo - intXFrom, height: intYTo - intYFrom, length: intZTo - intZFrom}
+	return &AABB{origin: point3D{X: overlapXFrom, Y: overlapYFrom, Z: overlapZFrom}, width: overlapXTo - overlapXFrom, height: overlapYTo - overlapYFrom, length: overlapZTo - overlapZFrom}
 }
 
 func (c AABB) volume() int {
@@ -84,46 +77,40 @@ func part1(cuboids []cuboid) {
 			initializationCuboids = append(initializationCuboids, c)
 		}
 	}
-
-	newCuboids := resolveIntersections(initializationCuboids)
-	fmt.Println("Cubes Lit:", countLit(newCuboids))
+	fmt.Println("Part 1 Answer:", countLit(initializationCuboids))
 }
 
 func part2(cuboids []cuboid) {
-	newCuboids := resolveIntersections(cuboids)
-	fmt.Println("Cubes Lit:", countLit(newCuboids))
+	fmt.Println("Part 2 Answer:", countLit(cuboids))
 }
 
-func countLit(cuboids []cuboid) (cnt int) {
-	for _, cuboid := range cuboids {
-		if cuboid.op == "on" {
-			cnt += cuboid.aabb.volume()
-		} else {
-			cnt -= cuboid.aabb.volume()
-		}
-	}
-	return
-}
-
-func resolveIntersections(cuboids []cuboid) (result []cuboid) {
-	result = []cuboid{{aabb: cuboids[0].aabb, op: "on"}} // the first cuboid is lit in all datasets
-	for i := 1; i < len(cuboids); i++ {
-		for _, r := range result {
-			// intersection of 2 cuboids is always 1 cuboid
-			overlapAABB := r.aabb.overlap(cuboids[i].aabb)
-			if overlapAABB != nil {
-				var newOp string
-				if r.op == "on" {
-					newOp = "off"
-				} else {
-					newOp = "on"
+func countLit(cuboids []cuboid) (count int) {
+	resolveIntersections := func(cuboids []cuboid) (resolved []cuboid) {
+		resolved = []cuboid{{aabb: cuboids[0].aabb, lit: true}} // the first cuboid is lit in all datasets
+		for i := 1; i < len(cuboids); i++ {
+			current, newOverlaps := cuboids[i], []cuboid{}
+			for _, r := range resolved {
+				overlapAABB := r.aabb.overlap(current.aabb) // overlap of 2 AABB cuboids is always 1 AABB cuboid
+				if overlapAABB != nil {
+					newOverlaps = append(newOverlaps, cuboid{aabb: *overlapAABB, lit: !r.lit})
 				}
-				overlapCuboid := cuboid{aabb: *overlapAABB, op: newOp}
-				result = append(result, overlapCuboid)
+			}
+			if len(newOverlaps) > 0 { // add the overlaps
+				resolved = append(resolved, newOverlaps...)
+			}
+			if current.lit { // then, add the current cuboid if lit
+				resolved = append(resolved, current)
 			}
 		}
-		if cuboids[i].op == "on" {
-			result = append(result, cuboid{aabb: cuboids[i].aabb, op: "on"})
+		return
+	}
+
+	newCuboids := resolveIntersections(cuboids)
+	for _, cuboid := range newCuboids {
+		if cuboid.lit {
+			count += cuboid.aabb.volume()
+		} else {
+			count -= cuboid.aabb.volume()
 		}
 	}
 	return
