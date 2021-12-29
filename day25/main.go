@@ -3,7 +3,6 @@ package main
 import (
 	"AOC/pkg/utils"
 	"fmt"
-	"os"
 	"strings"
 )
 
@@ -94,13 +93,8 @@ func part1(g1 grid) {
 }
 
 func main() {
-	argsWithoutProg := os.Args[1:]
-	if len(argsWithoutProg) != 1 {
-		fmt.Printf("Usage: %s <inputfile>\n", utils.GetProgramName())
-		return
-	}
-
-	lines, _ := utils.ReadInput(argsWithoutProg[0])
+	utils.AssertArgs()
+	lines := utils.AssertInput()
 	g1 := [][]string{}
 	for _, line := range lines {
 		g1 = append(g1, strings.Split(line, ""))

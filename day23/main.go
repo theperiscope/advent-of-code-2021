@@ -3,6 +3,7 @@ package main
 import (
 	"AOC/pkg/utils"
 	"fmt"
+	"log"
 	"strings"
 )
 
@@ -171,7 +172,10 @@ func solve(start, end []string) []path {
 }
 
 func part1() {
-	lines, _ := utils.ReadInput("input-part1.txt")
+	lines, err := utils.ReadInput("input-part1.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
 	start := lines[0:5]
 	end := lines[6:11]
 
@@ -180,7 +184,10 @@ func part1() {
 }
 
 func part2() {
-	lines, _ := utils.ReadInput("input-part2.txt")
+	lines, err := utils.ReadInput("input-part2.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
 	start := lines[0:7]
 	end := lines[8:15]
 

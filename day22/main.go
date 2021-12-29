@@ -3,7 +3,6 @@ package main
 import (
 	"AOC/pkg/utils"
 	"fmt"
-	"os"
 )
 
 // https://github.com/akosgarai/coldet/blob/master/coldet.go
@@ -26,13 +25,9 @@ type cuboid struct {
 }
 
 func main() {
-	argsWithoutProg := os.Args[1:]
-	if len(argsWithoutProg) != 1 {
-		fmt.Printf("Usage: %s <inputfile>\n", utils.GetProgramName())
-		return
-	}
+	utils.AssertArgs()
+	lines := utils.AssertInput()
 
-	lines, _ := utils.ReadInput(argsWithoutProg[0])
 	cuboids := []cuboid{}
 	for _, line := range lines {
 		var op string

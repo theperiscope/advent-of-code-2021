@@ -3,7 +3,6 @@ package main
 import (
 	"AOC/pkg/utils"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 )
@@ -86,13 +85,8 @@ func basinSize(lowPoint point, input [][]int) int {
 }
 
 func main() {
-	argsWithoutProg := os.Args[1:]
-	if len(argsWithoutProg) != 1 {
-		fmt.Printf("Usage: %s <inputfile>\n", utils.GetProgramName())
-		return
-	}
-
-	lines, _ := utils.ReadInput(argsWithoutProg[0])
+	utils.AssertArgs()
+	lines := utils.AssertInput()
 	numbers := [][]int{}
 	for _, line := range lines {
 		numbers = append(numbers, utils.StringToInt(strings.Split(line, "")))

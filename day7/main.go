@@ -3,7 +3,6 @@ package main
 import (
 	"AOC/pkg/utils"
 	"fmt"
-	"os"
 )
 
 // linearDistanceCost implements part 1 where cost is fixed at 1
@@ -42,13 +41,8 @@ func align(input []int, travelDistanceCost func([]int, int) int) int {
 }
 
 func main() {
-	argsWithoutProg := os.Args[1:]
-	if len(argsWithoutProg) != 1 {
-		fmt.Printf("Usage: %s <inputfile>\n", utils.GetProgramName())
-		return
-	}
-
-	crabs, _ := utils.ReadInputIntCsv(os.Args[1])
+	utils.AssertArgs()
+	crabs := utils.AssertInputIntCsv()
 
 	part1 := align(crabs, fixedDistanceCost)
 	fmt.Println("Part 1 Minimum Cost := ", part1)

@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"os"
 
 	"github.com/icza/bitio"
 )
@@ -161,13 +160,8 @@ func parse(r *bitio.Reader, readBits *int) *packet {
 }
 
 func main() {
-	argsWithoutProg := os.Args[1:]
-	if len(argsWithoutProg) != 1 {
-		fmt.Printf("Usage: %s <inputfile>\n", utils.GetProgramName())
-		return
-	}
-
-	lines, _ := utils.ReadInput(argsWithoutProg[0])
+	utils.AssertArgs()
+	lines := utils.AssertInput()
 	b, _ := hex.DecodeString(lines[0])
 	r := bitio.NewReader(bytes.NewBuffer(b)) // length type ID 0 that contains two sub-packets
 

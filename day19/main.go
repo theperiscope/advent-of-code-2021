@@ -3,7 +3,6 @@ package main
 import (
 	"AOC/pkg/utils"
 	"fmt"
-	"os"
 	"strings"
 )
 
@@ -175,13 +174,8 @@ func part2(scannerLocations []point3D) (maxDistance int) {
 }
 
 func main() {
-	argsWithoutProg := os.Args[1:]
-	if len(argsWithoutProg) != 1 {
-		fmt.Printf("Usage: %s <inputfile>\n", utils.GetProgramName())
-		return
-	}
-
-	lines, _ := utils.ReadInput(argsWithoutProg[0])
+	utils.AssertArgs()
+	lines := utils.AssertInput()
 
 	scannerLocations, alignedPointsCount := part1(lines)
 	fmt.Println("Part 1 Answer:", alignedPointsCount)

@@ -4,7 +4,6 @@ import (
 	"AOC/pkg/utils"
 	"fmt"
 	"math"
-	"os"
 	"strings"
 )
 
@@ -148,13 +147,8 @@ func split(s string, index int) (before string, after string) {
 }
 
 func main() {
-	argsWithoutProg := os.Args[1:]
-	if len(argsWithoutProg) != 1 {
-		fmt.Printf("Usage: %s <inputfile>\n", utils.GetProgramName())
-		return
-	}
-
-	lines, _ := utils.ReadInput(argsWithoutProg[0])
+	utils.AssertArgs()
+	lines := utils.AssertInput()
 
 	polymerTemplate := lines[0]
 	rules := map[string]string{}

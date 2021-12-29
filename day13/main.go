@@ -125,13 +125,8 @@ func foldX(grid [][]int, maxX, maxY, x int) (newGrid [][]int, newMaxX, newMaxY i
 }
 
 func main() {
-	argsWithoutProg := os.Args[1:]
-	if len(argsWithoutProg) != 1 {
-		fmt.Printf("Usage: %s <inputfile>\n", utils.GetProgramName())
-		return
-	}
-
-	lines, _ := utils.ReadInput(argsWithoutProg[0])
+	utils.AssertArgs()
+	lines := utils.AssertInput()
 	data := [][]int{}
 	folds := utils.Filter(lines, func(s string) bool { return strings.HasPrefix(s, "fold along") })
 	for _, line := range lines {

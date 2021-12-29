@@ -3,7 +3,6 @@ package main
 import (
 	"AOC/pkg/utils"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 )
@@ -56,13 +55,8 @@ func part2(incompleteLineStacks []utils.Stack) {
 }
 
 func main() {
-	argsWithoutProg := os.Args[1:]
-	if len(argsWithoutProg) != 1 {
-		fmt.Printf("Usage: %s <inputfile>\n", utils.GetProgramName())
-		return
-	}
-
-	lines, _ := utils.ReadInput(argsWithoutProg[0])
+	utils.AssertArgs()
+	lines := utils.AssertInput()
 	characterLines := [][]string{}
 	for _, line := range lines {
 		characterLines = append(characterLines, strings.Split(line, ""))

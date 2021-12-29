@@ -3,17 +3,11 @@ package main
 import (
 	"AOC/pkg/utils"
 	"fmt"
-	"os"
 )
 
 func main() {
-	argsWithoutProg := os.Args[1:]
-	if len(argsWithoutProg) != 1 {
-		fmt.Printf("Usage: %s <inputfile>\n", utils.GetProgramName())
-		return
-	}
-
-	lines, _ := utils.ReadInput(argsWithoutProg[0])
+	utils.AssertArgs()
+	lines := utils.AssertInput()
 
 	part1 := utils.Filter(lines, func(s string) bool {
 		var x1, y1, x2, y2 int
@@ -26,7 +20,6 @@ func main() {
 
 	work(part1)
 	work(part2)
-
 }
 
 func work(part2 []string) {

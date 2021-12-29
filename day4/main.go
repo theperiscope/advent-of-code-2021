@@ -4,18 +4,12 @@ import (
 	"AOC/day4/bingo"
 	"AOC/pkg/utils"
 	"fmt"
-	"os"
 	"strings"
 )
 
 func main() {
-	argsWithoutProg := os.Args[1:]
-	if len(argsWithoutProg) != 1 {
-		fmt.Printf("Usage: %s <inputfile>\n", utils.GetProgramName())
-		return
-	}
-
-	lines, _ := utils.ReadInput(argsWithoutProg[0])
+	utils.AssertArgs()
+	lines := utils.AssertInput()
 	numbers := utils.StringToInt(strings.Split(lines[0], ","))
 
 	p1 := []*bingo.BingoCard{}

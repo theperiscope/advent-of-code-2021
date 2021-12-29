@@ -4,7 +4,6 @@ import (
 	"AOC/pkg/utils"
 	"fmt"
 	"math"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -136,20 +135,9 @@ func (a *alu) execute(program []string) {
 	}
 }
 
-func part1() {
-}
-
-func part2() {
-}
-
 func testingAndPOCSample() {
-	argsWithoutProg := os.Args[1:]
-	if len(argsWithoutProg) != 1 {
-		fmt.Printf("Usage: %s <inputfile>\n", utils.GetProgramName())
-		return
-	}
-
-	lines, _ := utils.ReadInput(argsWithoutProg[0])
+	utils.AssertArgs()
+	lines := utils.AssertInput()
 
 	// https://go.dev/play/p/S98GjeaGBX0
 	// This WaitGroup is used to wait for all the

@@ -3,7 +3,6 @@ package main
 import (
 	"AOC/pkg/utils"
 	"fmt"
-	"os"
 )
 
 func part1(input []int) int {
@@ -61,15 +60,8 @@ func part2(input []int) int {
 }
 
 func main() {
-
-	argsWithoutProg := os.Args[1:]
-	if len(argsWithoutProg) != 1 {
-		fmt.Printf("Usage: %s <inputfile>\n", utils.GetProgramName())
-		return
-	}
-
-	input, _ := utils.ReadInputInt(argsWithoutProg[0])
-
+	utils.AssertArgs()
+	input := utils.AssertInputInt()
 	part1(input)
 	part2(input)
 }

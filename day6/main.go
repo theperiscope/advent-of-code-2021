@@ -3,6 +3,7 @@ package main
 import (
 	"AOC/pkg/utils"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 )
@@ -20,11 +21,18 @@ func main() {
 	argsWithoutProg := os.Args[1:]
 	if len(argsWithoutProg) != 2 {
 		fmt.Printf("Usage: %s <targetDay> <inputfile>\n", utils.GetProgramName())
-		return
+		os.Exit(1)
 	}
 
-	targetDay, _ := strconv.Atoi(os.Args[1])
-	lanternFish, _ := utils.ReadInputIntCsv(os.Args[2])
+	targetDay, err := strconv.Atoi(os.Args[1])
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	lanternFish, err := utils.ReadInputIntCsv(os.Args[2])
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	s, cache := 0, map[int]int{}
 	for _, fish := range lanternFish {

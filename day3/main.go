@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"math"
-	"os"
 
 	"AOC/pkg/utils"
 )
@@ -127,16 +126,8 @@ func co2(input []string, i int, stop int) {
 }
 
 func main() {
-
-	argsWithoutProg := os.Args[1:]
-	if len(argsWithoutProg) != 1 {
-		fmt.Printf("Usage: %s <inputfile>\n", utils.GetProgramName())
-		return
-	}
-
-	input, _ := utils.ReadInput(argsWithoutProg[0])
-
-	part1(input)
-	part2(input)
-
+	utils.AssertArgs()
+	lines := utils.AssertInput()
+	part1(lines)
+	part2(lines)
 }

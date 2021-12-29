@@ -3,7 +3,6 @@ package main
 import (
 	"AOC/pkg/utils"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 )
@@ -68,17 +67,9 @@ func part2(input []string) {
 }
 
 func main() {
+	utils.AssertArgs()
+	lines := utils.AssertInput()
 
-	argsWithoutProg := os.Args[1:]
-	if len(argsWithoutProg) != 1 {
-		fmt.Printf("Usage: %s <inputfile>\n", utils.GetProgramName())
-		return
-	}
-
-	input, _ := utils.ReadInput(argsWithoutProg[0])
-
-	part1(input)
-	part2(input)
-	return
-
+	part1(lines)
+	part2(lines)
 }
