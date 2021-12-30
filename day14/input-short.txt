@@ -16,11 +16,3 @@ BB -> N
 BC -> B
 CC -> N
 CN -> C
-
-NN NC CB
-
-NN NCN
-NC NBC
-CB CHB
-
-NC CN NB BC CH HB
