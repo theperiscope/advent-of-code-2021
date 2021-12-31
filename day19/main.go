@@ -36,27 +36,22 @@ func (m matrix3D) Multiply(other matrix3D) matrix3D {
 	return result
 }
 
-func calculateBestOverlap(s0, s1 []point3D) (point3D, int, matrix3D) {
-	// computer matrixes for the 24 unique orientations, per https://stackoverflow.com/questions/16452383/how-to-get-all-24-rotations-of-a-3-dimensional-array
-	orientations := []string{"X", "Y", "Z", "XX", "XY", "XZ", "YX", "YY", "ZY", "ZZ", "XXX", "XXY", "XXZ", "XYX", "XYY", "XZZ", "YXX", "YYY", "ZZZ", "XXXY", "XXYX", "XYXX", "XYYY"}
-	orientationMatrices := []matrix3D{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}} // start with ident
-	for _, orientation := range orientations {
-		m := matrix3D{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}
-		for _, c := range orientation {
-			if c == 'X' {
-				m = m.Multiply(matrix3D{{0, -1, 0}, {1, 0, 0}, {0, 0, 1}})
-			} else if c == 'Y' {
-				m = m.Multiply(matrix3D{{0, 0, -1}, {0, 1, 0}, {1, 0, 0}})
-			} else if c == 'Z' {
-				m = m.Multiply(matrix3D{{1, 0, 0}, {0, 0, -1}, {0, 1, 0}})
-			}
-		}
-		orientationMatrices = append(orientationMatrices, m)
-	}
-
+func calculateBestOverlap(s0, s1 []point3D, orientationMatrices []matrix3D) (point3D, int, matrix3D) {
 	optimumTransform := matrix3D{}
 	optimumOffset := point3D{}
 	optimumOverlaps := 0
+
+	// X-Y-Z coordinate map for faster matches
+	s0map := map[int]map[int]map[int]bool{}
+	for _, p := range s0 {
+		if _, ok := s0map[p.X]; !ok {
+			s0map[p.X] = map[int]map[int]bool{}
+		}
+		if _, ok := s0map[p.X][p.Y]; !ok {
+			s0map[p.X][p.Y] = make(map[int]bool)
+		}
+		s0map[p.X][p.Y][p.Z] = true
+	}
 	for _, m := range orientationMatrices {
 		transformedS1 := []point3D{}
 		for _, x := range s1 {
@@ -76,11 +71,9 @@ func calculateBestOverlap(s0, s1 []point3D) (point3D, int, matrix3D) {
 				}
 
 				overlaps := 0
-				for _, x := range s0 {
-					for _, y := range offsetTransformedS1 {
-						if x == y {
-							overlaps++
-						}
+				for _, y := range offsetTransformedS1 {
+					if _, ok := s0map[y.X][y.Y][y.Z]; ok && s0map[y.X][y.Y][y.Z] {
+						overlaps++
 					}
 				}
 
@@ -135,9 +128,26 @@ func part1(lines []string) (scannerLocations []point3D, alignedPointsCount int) 
 	scannerLocations = []point3D{{0, 0, 0}}
 	fmt.Printf("Processed %d/%d, %d aligned points.\n", len(scannerLocations), len(scanners), len(alignedPoints))
 
+	// computer matrixes for the 24 unique orientations, per https://stackoverflow.com/questions/16452383/how-to-get-all-24-rotations-of-a-3-dimensional-array
+	orientations := []string{"X", "Y", "Z", "XX", "XY", "XZ", "YX", "YY", "ZY", "ZZ", "XXX", "XXY", "XXZ", "XYX", "XYY", "XZZ", "YXX", "YYY", "ZZZ", "XXXY", "XXYX", "XYXX", "XYYY"}
+	orientationMatrices := []matrix3D{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}} // start with ident
+	for _, orientation := range orientations {
+		m := matrix3D{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}
+		for _, c := range orientation {
+			if c == 'X' {
+				m = m.Multiply(matrix3D{{0, -1, 0}, {1, 0, 0}, {0, 0, 1}})
+			} else if c == 'Y' {
+				m = m.Multiply(matrix3D{{0, 0, -1}, {0, 1, 0}, {1, 0, 0}})
+			} else if c == 'Z' {
+				m = m.Multiply(matrix3D{{1, 0, 0}, {0, 0, -1}, {0, 1, 0}})
+			}
+		}
+		orientationMatrices = append(orientationMatrices, m)
+	}
+
 	for len(remainingScanners) > 0 {
 		for i, current := range remainingScanners {
-			scannerLocation, overlap, transform := calculateBestOverlap(alignedPoints, current)
+			scannerLocation, overlap, transform := calculateBestOverlap(alignedPoints, current, orientationMatrices)
 			if overlap < 12 {
 				continue
 			}
@@ -147,7 +157,7 @@ func part1(lines []string) (scannerLocations []point3D, alignedPointsCount int) 
 			}
 			alignedPoints = uniquePoints(append(alignedPoints, realignedCurrentPoints...))
 			remainingScanners = append(remainingScanners[:i], remainingScanners[i+1:]...) // cut out current
-			fmt.Printf("Processed %d/%d, %d aligned points.\n", len(scannerLocations), len(scanners), len(alignedPoints))
+			fmt.Printf("Processed %d/%d, %d aligned points.\n", len(scannerLocations)+1, len(scanners), len(alignedPoints))
 			scannerLocations = append(scannerLocations, scannerLocation)
 			break
 		}
