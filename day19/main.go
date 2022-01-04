@@ -47,7 +47,7 @@ func (m matrix3D) Multiply(other matrix3D) matrix3D {
 	return result
 }
 
-func part1(lines []string) (alignedPoints []point3D, scannerLocations []point3D) {
+func part1(lines []string) (alignedPoints map[point3D]bool, scannerLocations []point3D) {
 	var scanners [][]point3D
 	i := -1
 	for _, line := range lines {
@@ -84,7 +84,10 @@ func part1(lines []string) (alignedPoints []point3D, scannerLocations []point3D)
 	}
 	orientationMatrices["IDENT"] = matrix3D{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}
 
-	alignedPoints = scanners[0]
+	alignedPoints = map[point3D]bool{}
+	for _, p := range scanners[0] {
+		alignedPoints[p] = true
+	}
 	remainingScanners := scanners[1:]
 	scannerLocations = []point3D{{0, 0, 0}}
 	fmt.Printf("Processed %d/%d, %d aligned points.\r", len(scannerLocations), len(scannerLocations)+len(remainingScanners), len(alignedPoints))
@@ -101,9 +104,8 @@ func part1(lines []string) (alignedPoints []point3D, scannerLocations []point3D)
 			scannerLocations = append(scannerLocations, scannerLocation)
 			for _, v := range current {
 				p := v.Multiply(bestTransform).Add(scannerLocation)
-				alignedPoints = append(alignedPoints, p)
+				alignedPoints[p] = true
 			}
-			alignedPoints = uniquePoints(alignedPoints)
 			remainingScanners, i = append(remainingScanners[:i], remainingScanners[i+1:]...), 0 // cut out current and start over
 			fmt.Printf("Processed %d/%d, %d aligned points.\r", len(scannerLocations), len(scanners), len(alignedPoints))
 		}
@@ -140,7 +142,11 @@ func main() {
 	fmt.Println("Part 2 Answer:", maxDistance)
 }
 
-func alignScanners(alignedPoints, currentScanner []point3D, orientationMatrices map[string]matrix3D) (int, matrix3D, point3D) {
+func alignScanners(alignedPointsMap map[point3D]bool, currentScanner []point3D, orientationMatrices map[string]matrix3D) (int, matrix3D, point3D) {
+	alignedPoints := []point3D{}
+	for p, _ := range alignedPointsMap {
+		alignedPoints = append(alignedPoints, p)
+	}
 	m0, m1 := distanceMatrix(alignedPoints), distanceMatrix(currentScanner)
 	sharedPoints := findSharedPoints(m0, m1)
 	if len(sharedPoints) < 12 {
@@ -288,16 +294,4 @@ func inAAndB(a, b []int) []int {
 	}
 
 	return inAAndB
-}
-
-func uniquePoints(points []point3D) []point3D {
-	seen := make(map[point3D]bool)
-	newPoints := []point3D{}
-	for _, p := range points {
-		if _, value := seen[p]; !value {
-			seen[p] = true
-			newPoints = append(newPoints, p)
-		}
-	}
-	return newPoints
 }
