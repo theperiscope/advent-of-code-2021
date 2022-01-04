@@ -4,6 +4,7 @@ import (
 	"AOC/pkg/utils"
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 	"sync"
 )
@@ -273,25 +274,29 @@ func findSharedPoints(distanceMap1, distanceMap2 [][]int) map[int]int {
 	return result
 }
 
-// https://stackoverflow.com/questions/52120488/what-is-the-most-efficient-way-to-get-the-intersection-and-exclusions-from-two-a
-func inAAndB(a, b []int) []int {
-	m := make(map[int]uint8)
-	for _, k := range a {
-		m[k] |= (1 << 0)
+// inAAndB interestion implementation using sorting
+func inAAndB(aa, bb []int) (result []int) {
+	if len(aa) == 0 || len(bb) == 0 {
+		return []int{}
 	}
-	for _, k := range b {
-		m[k] |= (1 << 1)
-	}
-
-	var inAAndB []int
-	for k, v := range m {
-		a := v&(1<<0) != 0
-		b := v&(1<<1) != 0
-		switch {
-		case a && b:
-			inAAndB = append(inAAndB, k)
+	a, b := make([]int, len(aa)), make([]int, len(bb))
+	copy(a, aa)
+	copy(b, bb)
+	sort.Ints(a)
+	sort.Ints(b)
+	for i, j := 0, 0; i < len(a) && j < len(b); {
+		x, y := a[i], b[j]
+		if x == y {
+			if len(result) == 0 || x > result[len(result)-1] {
+				result = append(result, x)
+			}
+			i++
+			j++
+		} else if x < y {
+			i++
+		} else {
+			j++
 		}
 	}
-
-	return inAAndB
+	return result
 }
