@@ -3,13 +3,18 @@ package main
 import (
 	"AOC/pkg/utils"
 	"fmt"
+	"math"
 	"strings"
+	"sync"
 )
 
 type point3D struct {
 	X, Y, Z int
 }
 
+func (p point3D) Add(other point3D) point3D {
+	return point3D{p.X + other.X, p.Y + other.Y, p.Z + other.Z}
+}
 func (p point3D) Subtract(other point3D) point3D {
 	return point3D{p.X - other.X, p.Y - other.Y, p.Z - other.Z}
 }
@@ -22,6 +27,12 @@ func (p point3D) Multiply(matrix matrix3D) point3D {
 		p.X*matrix[1][0] + p.Y*matrix[1][1] + p.Z*matrix[1][2],
 		p.X*matrix[2][0] + p.Y*matrix[2][1] + p.Z*matrix[2][2],
 	}
+}
+func (a point3D) EucledanDistance(b point3D) int {
+	x := math.Pow(float64(a.X)-float64(b.X), 2)
+	y := math.Pow(float64(a.Y)-float64(b.Y), 2)
+	z := math.Pow(float64(a.Z)-float64(b.Z), 2)
+	return int(x + y + z)
 }
 
 type matrix3D [3][3]int
@@ -36,74 +47,7 @@ func (m matrix3D) Multiply(other matrix3D) matrix3D {
 	return result
 }
 
-func calculateBestOverlap(s0, s1 []point3D, orientationMatrices []matrix3D) (point3D, int, matrix3D) {
-	optimumTransform := matrix3D{}
-	optimumOffset := point3D{}
-	optimumOverlaps := 0
-
-	// X-Y-Z coordinate map for faster matches
-	s0map := map[int]map[int]map[int]bool{}
-	for _, p := range s0 {
-		if _, ok := s0map[p.X]; !ok {
-			s0map[p.X] = map[int]map[int]bool{}
-		}
-		if _, ok := s0map[p.X][p.Y]; !ok {
-			s0map[p.X][p.Y] = make(map[int]bool)
-		}
-		s0map[p.X][p.Y][p.Z] = true
-	}
-	for _, m := range orientationMatrices {
-		transformedS1 := []point3D{}
-		for _, x := range s1 {
-			transformedS1 = append(transformedS1, x.Multiply(m))
-		}
-
-		for i, u := range s0 {
-			for j, v := range transformedS1 {
-				if j > i {
-					continue
-				}
-
-				offset := v.Subtract(u)
-				offsetTransformedS1 := []point3D{}
-				for _, x := range transformedS1 {
-					offsetTransformedS1 = append(offsetTransformedS1, x.Subtract(offset))
-				}
-
-				overlaps := 0
-				for _, y := range offsetTransformedS1 {
-					if _, ok := s0map[y.X][y.Y][y.Z]; ok && s0map[y.X][y.Y][y.Z] {
-						overlaps++
-					}
-				}
-
-				if overlaps > optimumOverlaps {
-					optimumOverlaps = overlaps
-					optimumOffset = offset
-					optimumTransform = m
-					if overlaps >= 12 {
-						return optimumOffset, optimumOverlaps, optimumTransform
-					}
-				}
-			}
-		}
-	}
-	return optimumOffset, optimumOverlaps, optimumTransform
-}
-
-func uniquePoints(points []point3D) []point3D {
-	seen := make(map[point3D]bool)
-	newPoints := []point3D{}
-	for _, p := range points {
-		if _, value := seen[p]; !value {
-			seen[p] = true
-			newPoints = append(newPoints, p)
-		}
-	}
-	return newPoints
-}
-
-func part1(lines []string) (scannerLocations []point3D, alignedPointsCount int) {
+func part1(lines []string) (alignedPoints []point3D, scannerLocations []point3D) {
 	var scanners [][]point3D
 	i := -1
 	for _, line := range lines {
@@ -123,14 +67,8 @@ func part1(lines []string) (scannerLocations []point3D, alignedPointsCount int) 
 		scanners[i] = append(scanners[i], point3D{x, y, z})
 	}
 
-	alignedPoints := scanners[0]
-	remainingScanners := scanners[1:]
-	scannerLocations = []point3D{{0, 0, 0}}
-	fmt.Printf("Processed %d/%d, %d aligned points.\n", len(scannerLocations), len(scanners), len(alignedPoints))
-
-	// computer matrixes for the 24 unique orientations, per https://stackoverflow.com/questions/16452383/how-to-get-all-24-rotations-of-a-3-dimensional-array
 	orientations := []string{"X", "Y", "Z", "XX", "XY", "XZ", "YX", "YY", "ZY", "ZZ", "XXX", "XXY", "XXZ", "XYX", "XYY", "XZZ", "YXX", "YYY", "ZZZ", "XXXY", "XXYX", "XYXX", "XYYY"}
-	orientationMatrices := []matrix3D{{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}} // start with ident
+	orientationMatrices := map[string]matrix3D{}
 	for _, orientation := range orientations {
 		m := matrix3D{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}
 		for _, c := range orientation {
@@ -142,28 +80,36 @@ func part1(lines []string) (scannerLocations []point3D, alignedPointsCount int) 
 				m = m.Multiply(matrix3D{{1, 0, 0}, {0, 0, -1}, {0, 1, 0}})
 			}
 		}
-		orientationMatrices = append(orientationMatrices, m)
+		orientationMatrices[orientation] = m
 	}
+	orientationMatrices["IDENT"] = matrix3D{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}
+
+	alignedPoints = scanners[0]
+	remainingScanners := scanners[1:]
+	scannerLocations = []point3D{{0, 0, 0}}
+	fmt.Printf("Processed %d/%d, %d aligned points.\r", len(scannerLocations), len(scannerLocations)+len(remainingScanners), len(alignedPoints))
 
 	for len(remainingScanners) > 0 {
-		for i, current := range remainingScanners {
-			scannerLocation, overlap, transform := calculateBestOverlap(alignedPoints, current, orientationMatrices)
-			if overlap < 12 {
+		for i := 0; i < len(remainingScanners); i++ {
+			current := remainingScanners[i]
+			bestMatches, bestTransform, scannerLocation := alignScanners(alignedPoints, current, orientationMatrices)
+
+			if bestMatches < 12 {
 				continue
 			}
-			realignedCurrentPoints := []point3D{}
-			for _, x := range current {
-				realignedCurrentPoints = append(realignedCurrentPoints, x.Multiply(transform).Subtract(scannerLocation))
-			}
-			alignedPoints = uniquePoints(append(alignedPoints, realignedCurrentPoints...))
-			remainingScanners = append(remainingScanners[:i], remainingScanners[i+1:]...) // cut out current
-			fmt.Printf("Processed %d/%d, %d aligned points.\n", len(scannerLocations)+1, len(scanners), len(alignedPoints))
+
 			scannerLocations = append(scannerLocations, scannerLocation)
-			break
+			for _, v := range current {
+				p := v.Multiply(bestTransform).Add(scannerLocation)
+				alignedPoints = append(alignedPoints, p)
+			}
+			alignedPoints = uniquePoints(alignedPoints)
+			remainingScanners, i = append(remainingScanners[:i], remainingScanners[i+1:]...), 0 // cut out current and start over
+			fmt.Printf("Processed %d/%d, %d aligned points.\r", len(scannerLocations), len(scanners), len(alignedPoints))
 		}
 	}
-
-	return scannerLocations, len(alignedPoints)
+	fmt.Println()
+	return
 }
 
 func part2(scannerLocations []point3D) (maxDistance int) {
@@ -187,9 +133,171 @@ func main() {
 	utils.AssertArgs()
 	lines := utils.AssertInput()
 
-	scannerLocations, alignedPointsCount := part1(lines)
-	fmt.Println("Part 1 Answer:", alignedPointsCount)
+	alignedPoints, scannerLocations := part1(lines)
+	fmt.Println("Part 1 Answer:", len(alignedPoints))
 
 	maxDistance := part2(scannerLocations)
 	fmt.Println("Part 2 Answer:", maxDistance)
+}
+
+func alignScanners(alignedPoints, currentScanner []point3D, orientationMatrices map[string]matrix3D) (int, matrix3D, point3D) {
+	m0, m1 := distanceMatrix(alignedPoints), distanceMatrix(currentScanner)
+	sharedPoints := findSharedPoints(m0, m1)
+	if len(sharedPoints) < 12 {
+		return 0, matrix3D{}, point3D{}
+	}
+	// check which orientation matrix will match with currently aligned points
+	// idea for future improvements is to evaluate use of SVD or Umeyama's algorithm instead http://nghiaho.com/?page_id=671
+	for _, m := range orientationMatrices {
+		offset := point3D{}
+		for k, v := range sharedPoints {
+			s0p, s1p := alignedPoints[k], currentScanner[v].Multiply(m)
+			offset = s0p.Subtract(s1p) // first offset should apply for all points if it is the correct scanner location
+			break
+		}
+		n := 0
+		for k, v := range sharedPoints {
+			s0p, s1p := alignedPoints[k], currentScanner[v].Multiply(m).Add(offset)
+			if s1p == s0p { // we expect here all to match if we have the correct scanner location
+				n++
+			} else {
+				break // it is an incorrect orientation matrix
+			}
+		}
+		if n >= 12 {
+			return n, m, offset
+		}
+	}
+	return 0, matrix3D{}, point3D{}
+}
+
+func distanceMatrix(points []point3D) [][]int {
+	result := make([][]int, len(points))
+
+	for i := 0; i < len(points); i++ {
+		result[i] = make([]int, len(points))
+	}
+
+	for i := 0; i < len(points); i++ {
+		for j := i + 1; j < len(points); j++ {
+			result[i][j] = points[i].EucledanDistance(points[j])
+			result[j][i] = result[i][j]
+		}
+	}
+	return result
+}
+
+type workItem struct {
+	rowIndex1, rowIndex2       int
+	distanceMap1, distanceMap2 [][]int
+}
+
+// findSharedPoints returns map of points from distanceMap1 which are the equivalent in distanceMap2
+func findSharedPoints(distanceMap1, distanceMap2 [][]int) map[int]int {
+	var doWork = func(rowIndex1, rowIndex2 int, dmap1, dmap2 [][]int) map[int]int {
+		row1, row2 := dmap1[rowIndex1], dmap2[rowIndex2]
+		potentialMatches := inAAndB(row1, row2)
+		if len(potentialMatches) >= 12 {
+			m := map[int]int{}
+			for col1 := 0; col1 < len(dmap1); col1++ {
+				for col2 := 0; col2 < len(dmap2); col2++ {
+					if dmap1[rowIndex1][col1] == dmap2[rowIndex2][col2] {
+						m[rowIndex1], m[col1] = rowIndex2, col2
+					}
+				}
+			}
+			return m
+		}
+		return map[int]int{}
+	}
+
+	parallelization := 16
+	var wg sync.WaitGroup
+	wg.Add(parallelization)
+	c := make(chan workItem)
+	result := map[int]int{}
+	for i := 0; i < parallelization; i++ {
+		go func(c chan workItem) {
+			for {
+				v, more := <-c
+				if !more {
+					wg.Done()
+					return
+				}
+
+				vv := doWork(v.rowIndex1, v.rowIndex2, v.distanceMap1, v.distanceMap2)
+				if len(vv) >= 12 {
+					result = vv
+				}
+			}
+		}(c)
+	}
+	// found during testing that breaking up processing into 3 separate loops makes
+	// performance better than going in-sequence one-by-one
+	for x1 := 0; x1 < len(distanceMap1); x1 += 3 { // %3 == 0
+		for x2 := 0; x2 < len(distanceMap2); x2 += 3 {
+			c <- workItem{x1, x2, distanceMap1, distanceMap2}
+			if len(result) > 0 { // if we have result, no need to queue up anything else
+				break
+			}
+		}
+	}
+	if len(result) == 0 { // still nothing found, next batch
+		for x1 := 1; x1 < len(distanceMap1); x1 += 3 { // %3 == 1
+			for x2 := 1; x2 < len(distanceMap2); x2 += 3 {
+				c <- workItem{x1, x2, distanceMap1, distanceMap2}
+				if len(result) > 0 { // if we have result, no need to queue up anything else
+					break
+				}
+			}
+		}
+	}
+	if len(result) == 0 { // still nothing found, final batch
+		for x1 := 2; x1 < len(distanceMap1); x1 += 3 { // %3 == 2
+			for x2 := 2; x2 < len(distanceMap2); x2 += 3 {
+				c <- workItem{x1, x2, distanceMap1, distanceMap2}
+				if len(result) > 0 { // if we have result, no need to queue up anything else
+					break
+				}
+			}
+		}
+	}
+	close(c)
+	wg.Wait()
+	return result
+}
+
+// https://stackoverflow.com/questions/52120488/what-is-the-most-efficient-way-to-get-the-intersection-and-exclusions-from-two-a
+func inAAndB(a, b []int) []int {
+	m := make(map[int]uint8)
+	for _, k := range a {
+		m[k] |= (1 << 0)
+	}
+	for _, k := range b {
+		m[k] |= (1 << 1)
+	}
+
+	var inAAndB []int
+	for k, v := range m {
+		a := v&(1<<0) != 0
+		b := v&(1<<1) != 0
+		switch {
+		case a && b:
+			inAAndB = append(inAAndB, k)
+		}
+	}
+
+	return inAAndB
+}
+
+func uniquePoints(points []point3D) []point3D {
+	seen := make(map[point3D]bool)
+	newPoints := []point3D{}
+	for _, p := range points {
+		if _, value := seen[p]; !value {
+			seen[p] = true
+			newPoints = append(newPoints, p)
+		}
+	}
+	return newPoints
 }
